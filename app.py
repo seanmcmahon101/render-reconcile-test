@@ -266,9 +266,9 @@ def logout():
     return redirect(url_for('index'))
 
 
+@login_required  # Put @login_required *before* @app.route
 @app.route('/', methods=['GET', 'POST'])
-@login_required
-@log_page_access # Apply logging decorator
+@log_page_access # Keep @log_page_access after @app.route for now
 def index():
     """Handles the main application logic for Excel sheet explanation."""
     explanation_html = None
