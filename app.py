@@ -7,6 +7,7 @@ import google.generativeai as genai
 import markdown
 from docx import Document
 from io import BytesIO
+from datetime import datetime
 
 # Import for password protection
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -53,7 +54,7 @@ DEFAULT_DOCX_FILENAME = "excel_explanation.docx"
 FORMULA_DOCX_FILENAME = "excel_formula.docx"
 CHAT_DOCX_FILENAME = "excel_chat.docx"
 RECONCILIATION_DOCX_FILENAME = "excel_reconciliation.docx"
-
+ADMIN_LOG_DOCX_FILENAME = "admin_log.docx" # Filename for admin log export
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -196,7 +197,7 @@ def get_formula_from_gemini(prompt):
 
 
 def export_to_docx(explanation, filename=DEFAULT_DOCX_FILENAME):
-    """Exports the explanation to a DOCX file in memory and returns BytesIO object."""
+    """Exports content to a DOCX file in memory and returns BytesIO object."""
     doc = Document()
     for line in explanation.splitlines():
         doc.add_paragraph(line)
@@ -205,13 +206,32 @@ def export_to_docx(explanation, filename=DEFAULT_DOCX_FILENAME):
     try:
         doc.save(docx_stream)
         docx_stream.seek(0)
-        logging.info(f"Explanation exported to DOCX in memory as {filename}.")
+        logging.info(f"Content exported to DOCX in memory as {filename}.")
         return docx_stream
     except Exception as e:
         logging.error(f"Error exporting to DOCX: {e}")
         return None
 
+# --- Logging Setup ---
+app.log_entries = []  # Initialize log entries list in the app context
 
+def log_activity(username, activity_description):
+    """Logs user activity with timestamp."""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_message = f"{timestamp} - User: {username} - Activity: {activity_description}"
+    app.log_entries.append(log_message) # Append to the app's log entries list
+    logging.info(log_message) # Still log to console as before
+
+# --- Decorator for logging activity ---
+def log_page_access(func):
+    """Decorator to log page access."""
+    def wrapper(*args, **kwargs):
+        if current_user.is_authenticated:
+            log_activity(current_user.username, f"Accessed page: {request.endpoint}") # Log endpoint name
+        return func(*args, **kwargs)
+    return wrapper
+
+# --- Apply @log_page_access decorator to routes you want to log ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Login page."""
@@ -229,6 +249,7 @@ def login():
             user = User(id=user_id_found, username=username, password_hash=user_data['password_hash'])
             login_user(user)
             flash('Logged in successfully.')
+            log_activity(username, "Logged in") # Log login event
             next_page = request.args.get('next')
             return redirect(next_page or url_for('index')) # Redirect to original page or index
         else:
@@ -237,14 +258,17 @@ def login():
 
 @app.route('/logout')
 @login_required
+@log_page_access # Log logout access too, for completeness if desired
 def logout():
     logout_user()
     flash('Logged out successfully.')
+    log_activity(current_user.username, "Logged out") # Log logout event
     return redirect(url_for('index'))
 
 
 @app.route('/', methods=['GET', 'POST'])
-@login_required # Protect the index page
+@login_required
+@log_page_access # Apply logging decorator
 def index():
     """Handles the main application logic for Excel sheet explanation."""
     explanation_html = None
@@ -279,6 +303,7 @@ def index():
                         explanation_html = markdown.markdown(explanation_markdown)
                         session['explanation_markdown'] = explanation_markdown
                         session['current_explanation_html'] = explanation_html # Store html for chat context
+                        log_activity(current_user.username, "Generated sheet explanation") # Log sheet explanation
                     else:
                         error = "Failed to get explanation from Gemini API."
                 else:
@@ -298,7 +323,8 @@ def index():
 
 
 @app.route('/export_docx')
-@login_required # Protect export
+@login_required
+@log_page_access # Apply logging decorator
 def export_docx_route():
     """Exports the explanation to DOCX format and allows download."""
     explanation_markdown = session.get('explanation_markdown')
@@ -307,6 +333,7 @@ def export_docx_route():
 
     docx_stream = export_to_docx(explanation_markdown, DEFAULT_DOCX_FILENAME)
     if docx_stream:
+        log_activity(current_user.username, "Exported sheet explanation to DOCX") # Log export action
         return send_file(
             docx_stream,
             as_attachment=True,
@@ -317,7 +344,8 @@ def export_docx_route():
         return "Error exporting to DOCX.", 500
 
 @app.route('/formula_creator', methods=['GET', 'POST'])
-@login_required # Protect formula creator
+@login_required
+@log_page_access # Apply logging decorator
 def formula_creator():
     """Handles the formula creation page."""
     formula_explanation_html = None
@@ -331,6 +359,7 @@ def formula_creator():
             if formula_explanation_markdown:
                 formula_explanation_html = markdown.markdown(formula_explanation_markdown)
                 session['formula_explanation_markdown'] = formula_explanation_markdown
+                log_activity(current_user.username, "Generated formula explanation") # Log formula generation
             else:
                 error = "Failed to get formula explanation from Gemini API."
         else:
@@ -344,7 +373,8 @@ def formula_creator():
 
 
 @app.route('/export_formula_docx')
-@login_required # Protect formula export
+@login_required
+@log_page_access # Apply logging decorator
 def export_formula_docx_route():
     """Exports the formula explanation to DOCX format."""
     formula_explanation_markdown = session.get('formula_explanation_markdown')
@@ -353,6 +383,7 @@ def export_formula_docx_route():
 
     docx_stream = export_to_docx(formula_explanation_markdown, FORMULA_DOCX_FILENAME)
     if docx_stream:
+        log_activity(current_user.username, "Exported formula explanation to DOCX") # Log formula export
         return send_file(
             docx_stream,
             as_attachment=True,
@@ -363,7 +394,8 @@ def export_formula_docx_route():
         return "Error exporting formula explanation to DOCX.", 500
 
 @app.route('/chat', methods=['GET', 'POST'])
-@login_required # Protect chat page
+@login_required
+@log_page_access # Apply logging decorator
 def chat():
     """Handles the chat functionality after sheet analysis."""
     explanation_html = session.get('current_explanation_html') # Get html explanation for display
@@ -384,6 +416,7 @@ def chat():
                 llm_response_html = markdown.markdown(llm_response_markdown)
                 chat_history.append({'user': user_message, 'bot': llm_response_html})
                 session['chat_history'] = chat_history
+                log_activity(current_user.username, "Sent chat message") # Log chat message sent
             else:
                 error = "Failed to get chat response from Gemini API."
         else:
@@ -396,7 +429,8 @@ def chat():
     return response
 
 @app.route('/export_chat_docx')
-@login_required # Protect chat export
+@login_required
+@log_page_access # Apply logging decorator
 def export_chat_docx_route():
     """Exports the chat history to DOCX format."""
     chat_history = session.get('chat_history')
@@ -410,6 +444,7 @@ def export_chat_docx_route():
 
     docx_stream = export_to_docx(chat_markdown, CHAT_DOCX_FILENAME)
     if docx_stream:
+        log_activity(current_user.username, "Exported chat history to DOCX") # Log chat export
         return send_file(
             docx_stream,
             as_attachment=True,
@@ -421,6 +456,7 @@ def export_chat_docx_route():
 
 @app.route('/reconcile', methods=['GET', 'POST'])
 @login_required
+@log_page_access # Apply logging decorator
 def reconcile():
     """Handles the accounts reconciliation page and logic."""
     reconciliation_explanation_html = None
@@ -460,6 +496,7 @@ def reconcile():
                     if reconciliation_markdown:
                         reconciliation_explanation_html = markdown.markdown(reconciliation_markdown)
                         session['reconciliation_explanation_markdown'] = reconciliation_markdown
+                        log_activity(current_user.username, "Performed accounts reconciliation") # Log reconciliation action
                     else:
                         error = "Failed to get reconciliation explanation from Gemini API."
                 else:
@@ -482,6 +519,7 @@ def reconcile():
 
 @app.route('/export_reconciliation_docx')
 @login_required
+@log_page_access # Apply logging decorator
 def export_reconciliation_docx_route():
     """Exports the reconciliation explanation to DOCX format."""
     reconciliation_explanation_markdown = session.get('reconciliation_explanation_markdown')
@@ -490,6 +528,7 @@ def export_reconciliation_docx_route():
 
     docx_stream = export_to_docx(reconciliation_explanation_markdown, RECONCILIATION_DOCX_FILENAME)
     if docx_stream:
+        log_activity(current_user.username, "Exported reconciliation to DOCX") # Log reconciliation export
         return send_file(
             docx_stream,
             as_attachment=True,
@@ -498,6 +537,43 @@ def export_reconciliation_docx_route():
         )
     else:
         return "Error exporting reconciliation explanation to DOCX.", 500
+
+@app.route('/admin_log')
+@login_required
+def admin_log():
+    """Admin log page - only accessible to user 'sm'."""
+    if current_user.username != 'sm':
+        flash("You do not have permission to access the admin log.", 'warning')
+        return redirect(url_for('index')) # Redirect non-admin users
+
+    log_entries = app.log_entries # Retrieve log entries from app context
+    return render_template('admin_log.html', log_entries=log_entries, current_user=current_user) # Pass log entries and user
+
+
+@app.route('/export_admin_log_docx')
+@login_required
+def export_admin_log_docx_route():
+    """Exports the admin log to DOCX format - admin only."""
+    if current_user.username != 'sm': # Double check admin status for export
+        flash("You do not have permission to export the admin log.", 'warning')
+        return redirect(url_for('index'))
+
+    log_entries = app.log_entries
+    if not log_entries:
+        return "No log entries available to export.", 400
+
+    log_text = "\n".join(log_entries) # Join log entries into a single string
+    docx_stream = export_to_docx(log_text, ADMIN_LOG_DOCX_FILENAME)
+
+    if docx_stream:
+        return send_file(
+            docx_stream,
+            as_attachment=True,
+            download_name=ADMIN_LOG_DOCX_FILENAME,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+    else:
+        return "Error exporting admin log to DOCX.", 500
 
 
 if __name__ == '__main__':
