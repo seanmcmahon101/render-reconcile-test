@@ -13,9 +13,10 @@ body::before {
     bottom: 0;
     left: 0;
     z-index: -1; /* Behind the content */
-    background: repeating-linear-gradient(0deg, transparent, transparent 24px, #e0e0e0 25px), /* Vertical lines */
-                repeating-linear-gradient(90deg, transparent, transparent 99px, #e0e0e0 100px), /* Horizontal lines */
-                #f8f9fa; /* Base sheet color */
+    background:
+        repeating-linear-gradient(0deg, transparent, transparent 24px, #e0e0e0 25px), /* Vertical lines */
+        repeating-linear-gradient(90deg, transparent, transparent 99px, #e0e0e0 100px), /* Horizontal lines */
+        #f8f9fa; /* Base sheet color */
     background-size: cover;
     animation: pan 10s linear infinite; /* Subtle panning animation */
 }
