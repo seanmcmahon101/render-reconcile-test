@@ -4,7 +4,104 @@
     <meta charset="UTF-8">
     <title>Login - Excel Tool</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background-color: #f0f2f5; /* Light grey background for the sheet */
+            overflow: hidden; /* To hide scrollbars caused by formula bar animation */
+            font-family: sans-serif; /* Set a default font */
+        }
+
+        /* Animated Excel Sheet Grid Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            z-index: -1; /* Behind the content */
+            background: repeating-linear-gradient(0deg, transparent, transparent 24px, #e0e0e0 25px), /* Vertical lines */
+                        repeating-linear-gradient(90deg, transparent, transparent 99px, #e0e0e0 100px), /* Horizontal lines */
+                        #f8f9fa; /* Base sheet color */
+            background-size: cover;
+            animation: pan 10s linear infinite; /* Subtle panning animation */
+        }
+
+        @keyframes pan {
+            100% {
+                background-position: 200px 0px, 0px 200px;
+            }
+        }
+
+
+        /* Formula Bar Area */
+        .formula-bar {
+            position: fixed; /* Fixed at the top */
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f8f9fa; /* Same as sheet background */
+            border-bottom: 1px solid #ced4da;
+            padding: 5px 15px;
+            box-sizing: border-box; /* Include padding in width */
+            display: flex;
+            align-items: center;
+            z-index: 0; /* Ensure it's behind the login form but in front of the grid */
+            overflow: hidden; /* Hide overflowing formula text */
+            white-space: nowrap; /* Keep formula text in one line */
+        }
+
+        .formula-label {
+            font-weight: bold;
+            margin-right: 10px;
+            color: #555;
+        }
+
+        .formula-text-container {
+            flex-grow: 1; /* Take up remaining space */
+            overflow: hidden; /* Clip overflowing text */
+            position: relative; /* For animation positioning */
+        }
+
+        .formula-text {
+            display: inline-block; /* Allows text to scroll horizontally */
+            animation: scrollFormula 20s linear infinite; /* Scroll animation */
+            padding-left: 100%; /* Start off-screen */
+        }
+
+        @keyframes scrollFormula {
+            0% {
+                transform: translateX(0%);
+            }
+            100% {
+                transform: translateX(-100%); /* Scroll full width of text */
+            }
+        }
+
+
+        .login-container {
+            margin-top: 120px; /* Adjusted margin to accommodate formula bar */
+            position: relative; /* Needed for z-index context */
+            z-index: 1; /* To be on top of the formula bar and background */
+        }
+
+        .jumbotron {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
 
@@ -12,8 +109,31 @@
         <span class="formula-label">=</span>
         <div class="formula-text-container">
             <span class="formula-text" id="formulaText">
-                SUM(A1:A10), AVERAGE(B1:B10), VLOOKUP("Login", Data!A:B, 2, FALSE),  IF(ISBLANK(C1), "Incomplete", "Complete"), MAX(D1:D10),  ... more Excel formulas scrolling ...
+                SUM(A1:A10), AVERAGE(B1:B10), VLOOKUP("Login", Data!A:B, 2, FALSE), IF(ISBLANK(C1), "Incomplete", "Complete"), MAX(D1:D10), 
+                INDEX(Data!A1:C10, MATCH("Criteria", Data!A1:A10, 0), 2), 
+                SUMPRODUCT((A1:A10)*(B1:B10)), 
+                IFERROR(VLOOKUP("Value", Data!A:B, 2, FALSE), "Not Found"), 
+                CONCATENATE("Value is ", TEXT(A1, "0.00")), 
+                OFFSET(A1, 1, 1, 5, 5), 
+                CHOOSE(2, "First", "Second", "Third"), 
+                TRANSPOSE(A1:A10), 
+                FREQUENCY(B1:B10, C1:C5), 
+                LARGE(D1:D10, 3), 
+                SMALL(E1:E10, 2), 
+                SUMIFS(F1:F10, G1:G10, ">10"), 
+                COUNTIFS(H1:H10, "<5"), 
+                TEXTJOIN(", ", TRUE, I1:I10), 
+                UNIQUE(J1:J10), 
+                FILTER(K1:K10, L1:L10 > 5), 
+                SEQUENCE(10, 1, 1, 1), 
+                SORT(M1:M10, 1, TRUE), 
+                RANDARRAY(5, 5, 1, 100, TRUE), 
+                XMATCH("Item", N1:N10, 0, 1), 
+                XLOOKUP("Key", O1:O10, P1:P10, "Not Found"), 
+                LET(x, Q1:Q10, y, R1:R10, x + y), 
+                LAMBDA(x, y, x * y)(S1, T1)
             </span>
+
         </div>
     </div>
 
@@ -53,68 +173,8 @@
             </div>
         </div>
     </div>
-
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const formulaTextElement = document.getElementById('formulaText');
-            const formulas = [
-                "SUM(A1:A10)", "AVERAGE(B2:B12)", "VLOOKUP(\"Data\", Sheet1!A:B, 2, FALSE)",
-                "IF(C5>10, \"High\", \"Low\")", "MAX(D1:D20)", "COUNTIF(E:E, \">0\")",
-                "INDEX(Sheet2!A:A, MATCH(\"Item\", Sheet2!B:B, 0))", "CONCATENATE(\"Hello\", \" \", \"World\")",
-                "TODAY()", "NOW()", "RAND()", "ROUND(123.456, 2)", "SQRT(25)", "POWER(2, 3)" // Added more formulas
-            ];
-
-            function getRandomFormula() {
-                return formulas[Math.floor(Math.random() * formulas.length)];
-            }
-
-            function typeText(element, text, delay, callback) {
-                let index = 0;
-                function typeCharacter() {
-                    if (index < text.length) {
-                        element.textContent += text[index];
-                        index++;
-                        setTimeout(typeCharacter, delay);
-                    } else {
-                        if (callback) callback();
-                    }
-                }
-                typeCharacter();
-            }
-
-            function backspaceText(element, delay, callback) {
-                let text = element.textContent;
-                function deleteCharacter() {
-                    if (text.length > 0) {
-                        text = text.slice(0, -1);
-                        element.textContent = text;
-                        setTimeout(deleteCharacter, delay);
-                    } else {
-                        if (callback) callback();
-                    }
-                }
-                deleteCharacter();
-            }
-
-            function startFormulaAnimation() {
-                formulaTextElement.textContent = '='; // Clear existing content, start with '='
-                const formula = getRandomFormula();
-                typeText(formulaTextElement, formula, 50, () => { // Typing formula
-                    setTimeout(() => {
-                        backspaceText(formulaTextElement, 30, () => { // Backspacing formula
-                            setTimeout(startFormulaAnimation, 1000 + Math.random() * 2000); // Delay before next formula
-                        });
-                    }, 2000 + Math.random() * 3000); // Delay before backspacing
-                });
-            }
-
-            startFormulaAnimation(); // Initiate the animation loop
-
-        });
-    </script>
 </body>
 </html>
