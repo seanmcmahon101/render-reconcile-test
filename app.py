@@ -1,12 +1,16 @@
 import os
 import logging
-from flask import Flask, render_template, request, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash
 from werkzeug.utils import secure_filename
 import openpyxl
 import google.generativeai as genai
 import markdown
 from docx import Document
 from io import BytesIO
+
+# Import for password protection
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your_default_secret_key')
@@ -34,6 +38,39 @@ CHAT_DOCX_FILENAME = "excel_chat.docx"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# --- Flask-Login Configuration ---
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'  # Define the login view function
+login_manager.login_message = "Please log in to access this page." # Custom message
+
+# --- User Data from Environment Variables ---
+users = {}
+for i in range(1, 5):  # Load data for 4 users (User1, User2, User3, User4)
+    username = os.getenv(f"USER{i}_USERNAME")
+    password = os.getenv(f"USER{i}_PASSWORD")
+    if username and password: # Only add user if both username and password env vars are set
+        users[i] = {'username': username, 'password_hash': generate_password_hash(password)}
+    else:
+        logging.warning(f"User {i} credentials not fully configured via environment variables (USER{i}_USERNAME, USER{i}_PASSWORD). User {i} will not be available for login.")
+
+
+class User(UserMixin):
+    def __init__(self, id, username, password_hash):
+        self.id = id
+        self.username = username
+        self.password_hash = password_hash
+
+    def verify_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+@login_manager.user_loader
+def load_user(user_id):
+    user_data = users.get(int(user_id))
+    if user_data:
+        return User(id=user_id, username=user_data['username'], password_hash=user_data['password_hash'])
+    return None
 
 
 def configure_api():
@@ -135,7 +172,39 @@ def export_to_docx(explanation, filename=DEFAULT_DOCX_FILENAME):
         return None
 
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page."""
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user_data = None
+        for user_id, data in users.items(): # Simple user lookup from env vars
+            if data['username'] == username:
+                user_data = data
+                user_id_found = user_id
+                break
+
+        if user_data and check_password_hash(user_data['password_hash'], password):
+            user = User(id=user_id_found, username=username, password_hash=user_data['password_hash'])
+            login_user(user)
+            flash('Logged in successfully.')
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('index')) # Redirect to original page or index
+        else:
+            flash('Invalid username or password', 'error')
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Logged out successfully.')
+    return redirect(url_for('index'))
+
+
 @app.route('/', methods=['GET', 'POST'])
+@login_required # Protect the index page
 def index():
     """Handles the main application logic for Excel sheet explanation."""
     explanation_html = None
@@ -146,13 +215,13 @@ def index():
     if request.method == 'POST':
         if 'excel_file' not in request.files:
             error = 'No file part'
-            return render_template('index.html', error=error, model_name=model_name)
+            return render_template('index.html', error=error, model_name=model_name, current_user=current_user)
 
         file = request.files['excel_file']
 
         if file.filename == '':
             error = 'No selected file'
-            return render_template('index.html', error=error, model_name=model_name)
+            return render_template('index.html', error=error, model_name=model_name, current_user=current_user)
 
         if file and allowed_file(file.filename):
             try:
@@ -187,10 +256,11 @@ def index():
         else:
             error = 'Invalid file type. Allowed types are xlsx, xls'
 
-    return render_template('index.html', explanation_html=explanation_html, error=error, model_name=model_name)
+    return render_template('index.html', explanation_html=explanation_html, error=error, model_name=model_name, current_user=current_user)
 
 
 @app.route('/export_docx')
+@login_required # Protect export
 def export_docx_route():
     """Exports the explanation to DOCX format and allows download."""
     explanation_markdown = session.get('explanation_markdown')
@@ -209,6 +279,7 @@ def export_docx_route():
         return "Error exporting to DOCX.", 500
 
 @app.route('/formula_creator', methods=['GET', 'POST'])
+@login_required # Protect formula creator
 def formula_creator():
     """Handles the formula creation page."""
     formula_explanation_html = None
@@ -227,9 +298,10 @@ def formula_creator():
         else:
             error = "Please enter a description for the formula you need."
 
-    return render_template('formula_creator.html', formula_explanation_html=formula_explanation_html, error=error)
+    return render_template('formula_creator.html', formula_explanation_html=formula_explanation_html, error=error, current_user=current_user)
 
 @app.route('/export_formula_docx')
+@login_required # Protect formula export
 def export_formula_docx_route():
     """Exports the formula explanation to DOCX format."""
     formula_explanation_markdown = session.get('formula_explanation_markdown')
@@ -248,6 +320,7 @@ def export_formula_docx_route():
         return "Error exporting formula explanation to DOCX.", 500
 
 @app.route('/chat', methods=['GET', 'POST'])
+@login_required # Protect chat page
 def chat():
     """Handles the chat functionality after sheet analysis."""
     explanation_html = session.get('current_explanation_html') # Get html explanation for display
@@ -273,9 +346,10 @@ def chat():
         else:
             error = "Please enter a chat message."
 
-    return render_template('chat.html', explanation_html=explanation_html, chat_history=chat_history, error=error)
+    return render_template('chat.html', explanation_html=explanation_html, chat_history=chat_history, error=error, current_user=current_user)
 
 @app.route('/export_chat_docx')
+@login_required # Protect chat export
 def export_chat_docx_route():
     """Exports the chat history to DOCX format."""
     chat_history = session.get('chat_history')
