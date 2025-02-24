@@ -1,19 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Excel Formula Creator</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-</head>
-<body>
-    <div class="container">
-        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
             <a class="navbar-brand" href="/">Excel Tool</a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Sheet Explanation</a>
+                    </li>
+                    <li class="nav-item active">
+                        <a class="nav-link" href="{{ url_for('formula_creator') }}">Formula Creator <span class="sr-only">(current)</span></a>
+                    </li>
+                     <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('reconcile') }}">Accounts Reconciliation</a>
+                    </li>
                     {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <span class="navbar-text">Logged in as: {{ current_user.username }}</span>
@@ -29,40 +29,3 @@
                 </ul>
             </div>
         </nav>
-        <div class="jumbotron">
-            <h1 class="display-4">Excel Formula Creator</h1>
-            <p class="lead">Describe the Excel formula you need, and Gemini API will generate it for you.</p>
-            <hr class="my-4">
-
-            <form method="POST">
-                <div class="form-group">
-                    <label for="formula_description">Formula Description</label>
-                    <textarea class="form-control" id="formula_description" name="formula_description" rows="3" required></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">Generate Formula</button>
-                <a href="{{ url_for('export_formula_docx_route') }}" class="btn btn-secondary ml-2">Export Formula to DOCX</a>
-                <a href="{{ url_for('index') }}" class="btn btn-secondary ml-2">Back to Sheet Explanation</a>
-            </form>
-
-            {% if error %}
-            <div class="alert alert-danger mt-3" role="alert">
-                {{ error }}
-            </div>
-            {% endif %}
-
-            {% if formula_explanation_html %}
-            <div class="mt-4">
-                <h2>Formula Explanation:</h2>
-                <div class="card p-3">
-                    {{ formula_explanation_html | safe }}
-                </div>
-
-            </div>
-            {% endif %}
-        </div>
-    </div>
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</body>
-</html>
