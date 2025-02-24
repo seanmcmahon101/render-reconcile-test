@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Accounts Reconciliation</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="/">Excel Tool</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Sheet Explanation</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('formula_creator') }}">Formula Creator</a>
+                    </li>
+                     <li class="nav-item active">
+                        <a class="nav-link" href="{{ url_for('reconcile') }}">Accounts Reconciliation <span class="sr-only">(current)</span></a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <span class="navbar-text">Logged in as: {{ current_user.username }}</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+
+        <div class="jumbotron">
+            <h1 class="display-4">Accounts Reconciliation</h1>
+            <p class="lead">Upload two Excel files to compare and reconcile accounts.</p>
+            <hr class="my-4">
+
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="excel_file_1">Upload Sheet 1 (.xlsx, .xls)</label>
+                    <input type="file" class="form-control-file" id="excel_file_1" name="excel_file_1" accept=".xlsx,.xls" required>
+                </div>
+                <div class="form-group">
+                    <label for="excel_file_2">Upload Sheet 2 (.xlsx, .xls)</label>
+                    <input type="file" class="form-control-file" id="excel_file_2" name="excel_file_2" accept=".xlsx,.xls" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Reconcile Sheets</button>
+                <a href="{{ url_for('export_reconciliation_docx_route') }}" class="btn btn-secondary ml-2">Export Reconciliation to DOCX</a>
+            </form>
+
+            {% if error %}
+            <div class="alert alert-danger mt-3" role="alert">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            {% if reconciliation_explanation_html %}
+            <div class="mt-4">
+                <h2>Reconciliation Explanation:</h2>
+                <div class="card p-3">
+                    {{ reconciliation_explanation_html | safe }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
