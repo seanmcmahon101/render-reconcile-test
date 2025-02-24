@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Excel Sheet Explanation</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="jumbotron">
+            <h1 class="display-4">Excel Sheet Explanation</h1>
+            <p class="lead">Upload an Excel file to get an explanation of its structure and formulas using Gemini API.</p>
+            <hr class="my-4">
+
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <input type="file" class="form-control-file" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Get Explanation</button>
+            </form>
+
+            {% if error %}
+            <div class="alert alert-danger mt-3" role="alert">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            {% if explanation_html %}
+            <div class="mt-4">
+                <h2>Explanation:</h2>
+                <div class="card p-3">
+                    {{ explanation_html | safe }}
+                </div>
+                <a href="{{ url_for('export_docx_route') }}" class="btn btn-secondary mt-3">Export to DOCX</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/

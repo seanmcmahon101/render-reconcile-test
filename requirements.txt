@@ -1,0 +1,6 @@
+Flask
+openpyxl
+google-generativeai
+markdown
+python-docx
+gunicorn
