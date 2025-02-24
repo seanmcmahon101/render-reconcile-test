@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat about Excel Sheet</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="jumbotron">
+            <h1 class="display-4">Chat about Excel Sheet</h1>
+            <p class="lead">Chat with Gemini API about the uploaded Excel sheet.</p>
+            <hr class="my-4">
+
+            {% if explanation_html %}
+            <div>
+                <h2>Sheet Explanation (Context for Chat):</h2>
+                <div class="card p-3 mb-3">
+                    {{ explanation_html | safe }}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="chat-history mb-3">
+                <h2>Chat History:</h2>
+                <div class="card p-3" style="height: 300px; overflow-y: auto;">
+                    {% if chat_history %}
+                        {% for message in chat_history %}
+                            <p><strong>You:</strong> {{ message.user }}</p>
+                            <div class="alert alert-info" role="alert">
+                                {{ message.bot | safe }}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p>No chat history yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="chat_message">Your Message:</label>
+                    <textarea class="form-control" id="chat_message" name="chat_message" rows="2" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Send</button>
+                <a href="{{ url_for('export_chat_docx_route') }}" class="btn btn-secondary ml-2">Export Chat to DOCX</a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary ml-2">Back to Sheet Explanation</a>
+            </form>
+
+            {% if error %}
+            <div class="alert alert-danger mt-3" role="alert">
+                {{ error }}
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
