@@ -56,6 +56,18 @@
                     <label for="excel_file_2">Upload Sheet 2 (.xlsx, .xls)</label>
                     <input type="file" class="form-control-file" id="excel_file_2" name="excel_file_2" accept=".xlsx,.xls" required>
                 </div>
+
+                <div class="form-group">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="model_select" id="standard_model" value="standard" {% if model_name != 'thinking' %}checked{% endif %}>
+                        <label class="form-check-label" for="standard_model">Standard Model</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="model_select" id="thinking_model" value="thinking" {% if model_name == 'thinking' %}checked{% endif %}>
+                        <label class="form-check-label" for="thinking_model">Thinking Model</label>
+                    </div>
+                </div>
+
                 <button type="submit" class="btn btn-primary">Reconcile Sheets</button>
                 <a href="{{ url_for('export_reconciliation_docx_route') }}" class="btn btn-secondary ml-2">Export Reconciliation to DOCX</a>
             </form>
