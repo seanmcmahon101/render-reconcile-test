@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <title>Login - Excel Tool</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="styles.css"> </head>
+    <link rel="stylesheet" href="styles.css">
+</head>
 <body>
 
     <div class="formula-bar">
@@ -46,10 +47,13 @@
                         <button type="submit" class="btn btn-primary btn-block">Login</button>
                     </form>
                     <hr class="my-4">
+                    <p class="text-center">Default Users for Testing:</p>
+                    <p class="text-center">User1/Password, User2/Password, User3/Password, User4/Password</p>
                 </div>
             </div>
         </div>
     </div>
+
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
@@ -60,7 +64,8 @@
             const formulas = [
                 "SUM(A1:A10)", "AVERAGE(B2:B12)", "VLOOKUP(\"Data\", Sheet1!A:B, 2, FALSE)",
                 "IF(C5>10, \"High\", \"Low\")", "MAX(D1:D20)", "COUNTIF(E:E, \">0\")",
-                "INDEX(Sheet2!A:A, MATCH(\"Item\", Sheet2!B:B, 0))", "CONCATENATE(\"Hello\", \" \", \"World\")"
+                "INDEX(Sheet2!A:A, MATCH(\"Item\", Sheet2!B:B, 0))", "CONCATENATE(\"Hello\", \" \", \"World\")",
+                "TODAY()", "NOW()", "RAND()", "ROUND(123.456, 2)", "SQRT(25)", "POWER(2, 3)" // Added more formulas
             ];
 
             function getRandomFormula() {
