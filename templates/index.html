@@ -6,8 +6,30 @@
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
-  <div class="container">
-    <div class="jumbotron">
+    <div class="container">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="/">Excel Tool</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <span class="navbar-text">Logged in as: {{ current_user.username }}</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+        <div class="jumbotron">
       <h1 class="display-4">Excel Sheet Explanation</h1>
       <p class="lead">Upload an Excel file to get an explanation of its structure and formulas using Gemini API.</p>
       <hr class="my-4">
@@ -20,11 +42,11 @@
         <div class="form-group">
           <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="model_select" id="standard_model" value="standard" {% if model_name != 'gemini-2.0-flash-thinking-exp' %}checked{% endif %}>
-            <label class="form-check-label" for="standard_model">Standard Model, quick and reliable.</label>
+            <label class="form-check-label" for="standard_model">Standard Model</label>
           </div>
           <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="model_select" id="thinking_model" value="thinking" {% if model_name == 'gemini-2.0-flash-thinking-exp' %}checked{% endif %}>
-            <label class="form-check-label" for="thinking_model">Thinking Model, slower, but a genius. My personal favourite.</label>
+            <label class="form-check-label" for="thinking_model">Thinking Model</label>
           </div>
         </div>
 
