@@ -426,6 +426,7 @@ def reconcile():
     reconciliation_explanation_html = None
     docx_stream = None
     error = None
+    model_name = DEFAULT_MODEL_NAME # Default model
 
     if request.method == 'POST':
         if 'excel_file_1' not in request.files or 'excel_file_2' not in request.files:
@@ -442,12 +443,19 @@ def reconcile():
                 file1.save(file_path_1)
                 file2.save(file_path_2)
 
+                selected_model = request.form.get('model_select') # Get selected model
+                if selected_model == 'thinking':
+                    model_name = THINKING_MODEL_NAME
+                else:
+                    model_name = DEFAULT_MODEL_NAME
+
+
                 sheet1 = load_excel_data(file_path_1)
                 sheet2 = load_excel_data(file_path_2)
 
                 if sheet1 and sheet2:
                     prompt = build_prompt_reconciliation(sheet1, sheet2)
-                    reconciliation_markdown = get_explanation_from_gemini(prompt, DEFAULT_MODEL_NAME) # Or thinking model?
+                    reconciliation_markdown = get_explanation_from_gemini(prompt, model_name) # Use selected model
 
                     if reconciliation_markdown:
                         reconciliation_explanation_html = markdown.markdown(reconciliation_markdown)
@@ -466,7 +474,7 @@ def reconcile():
         else:
             error = 'Invalid file types. Allowed types are xlsx, xls for both sheets.'
 
-    response = make_response(render_template('reconcile.html', reconciliation_explanation_html=reconciliation_explanation_html, error=error, current_user=current_user))
+    response = make_response(render_template('reconcile.html', reconciliation_explanation_html=reconciliation_explanation_html, error=error, current_user=current_user, model_name=model_name)) # Pass model_name to template
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
