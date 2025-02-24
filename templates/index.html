@@ -1,55 +1,57 @@
 <!DOCTYPE html>
- <html lang="en">
- <head>
+<html lang="en">
+<head>
   <meta charset="UTF-8">
   <title>Excel Sheet Explanation</title>
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
- </head>
- <body>
+</head>
+<body>
   <div class="container">
-   <div class="jumbotron">
-    <h1 class="display-4">Excel Sheet Explanation</h1>
-    <p class="lead">Upload an Excel file to get an explanation of its structure and formulas using Gemini API.</p>
-    <hr class="my-4">
+    <div class="jumbotron">
+      <h1 class="display-4">Excel Sheet Explanation</h1>
+      <p class="lead">Upload an Excel file to get an explanation of its structure and formulas using Gemini API.</p>
+      <hr class="my-4">
 
-    <form method="POST" enctype="multipart/form-data">
-     <div class="form-group">
-      <input type="file" class="form-control-file" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
-     </div>
+      <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+          <input type="file" class="form-control-file" id="excel_file" name="excel_file" accept=".xlsx,.xls" required>
+        </div>
 
-     <div class="form-group">
-      <div class="form-check form-check-inline">
-       <input class="form-check-input" type="radio" name="model_select" id="standard_model" value="standard" {% if model_name != 'gemini-2.0-flash-thinking-exp' %}checked{% endif %}>
-       <label class="form-check-label" for="standard_model">Standard Model, fast reliable</label>
+        <div class="form-group">
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="model_select" id="standard_model" value="standard" {% if model_name != 'gemini-2.0-flash-thinking-exp' %}checked{% endif %}>
+            <label class="form-check-label" for="standard_model">Standard Model, quick and reliable.</label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input class="form-check-input" type="radio" name="model_select" id="thinking_model" value="thinking" {% if model_name == 'gemini-2.0-flash-thinking-exp' %}checked{% endif %}>
+            <label class="form-check-label" for="thinking_model">Thinking Model, slower, but a genius. My personal favourite.</label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Get Explanation</button>
+        <a href="{{ url_for('formula_creator') }}" class="btn btn-info ml-2">Formula Creator</a>
+      </form>
+
+      {% if error %}
+      <div class="alert alert-danger mt-3" role="alert">
+        {{ error }}
       </div>
-      <div class="form-check form-check-inline">
-       <input class="form-check-input" type="radio" name="model_select" id="thinking_model" value="thinking" {% if model_name == 'gemini-2.0-flash-thinking-exp' %}checked{% endif %}>
-       <label class="form-check-label" for="thinking_model">Thinking Model, slower, but a genius. My personal favourite.</label>
+      {% endif %}
+
+      {% if explanation_html %}
+      <div class="mt-4">
+        <h2>Explanation:</h2>
+        <div class="card p-3">
+          {{ explanation_html | safe }}
+        </div>
+        <a href="{{ url_for('export_docx_route') }}" class="btn btn-secondary mt-3">Export to DOCX</a>
+        <a href="{{ url_for('chat') }}" class="btn btn-primary mt-3">Chat about this Sheet</a>
       </div>
-     </div>
-
-     <button type="submit" class="btn btn-primary">Get Explanation</button>
-    </form>
-
-    {% if error %}
-    <div class="alert alert-danger mt-3" role="alert">
-     {{ error }}
+      {% endif %}
     </div>
-    {% endif %}
-
-    {% if explanation_html %}
-    <div class="mt-4">
-     <h2>Explanation:</h2>
-     <div class="card p-3">
-      {{ explanation_html | safe }}
-     </div>
-     <a href="{{ url_for('export_docx_route') }}" class="btn btn-secondary mt-3">Export to DOCX</a>
-    </div>
-    {% endif %}
-   </div>
   </div>
   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
- </body>
- </html>
+</body>
+</html>
