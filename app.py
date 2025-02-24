@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash, make_response
 from werkzeug.utils import secure_filename
 import openpyxl
 import google.generativeai as genai
@@ -26,6 +26,25 @@ Focus on providing insights that would be helpful to someone unfamiliar with the
 FORMULA_SYSTEM_PROMPT = """You are an expert Excel formula creator. I will describe what I need a formula for, and you will provide the most efficient and correct Excel formula to achieve this.
 You should explain the formula and provide an example of how to use it. If there are multiple ways to achieve it, provide the best and most common approach unless specified otherwise.
 Assume I am using standard Excel functions."""
+RECONCILIATION_SYSTEM_PROMPT = """You are an expert in accounts reconciliation using Excel spreadsheets.
+Your task is to compare two Excel sheets, identify discrepancies, and explain the differences clearly and concisely in Markdown format.
+
+Consider the two sheets as representing two sets of accounts or data for reconciliation.
+Identify and explain:
+- Any differences in data between corresponding columns or rows in the two sheets.
+- Any missing entries or rows that are present in one sheet but not in the other.
+- Any inconsistencies in formatting or data types that might indicate discrepancies.
+- For numerical data, highlight any significant differences or variances.
+
+Structure your reconciliation report in Markdown with:
+- Clear headings for each type of discrepancy found.
+- Bullet points listing specific discrepancies.
+- Code blocks or tables where appropriate to show data differences or examples.
+- A summary of the overall reconciliation status and key findings.
+
+Focus on providing a report that is easy to understand for someone needing to reconcile these accounts and identify potential issues."""
+
+
 PROMPT_PREFIX = "The Excel sheet contains the following information in a structured way:\n"
 PROMPT_SUFFIX = "\nPlease provide a detailed explanation in Markdown format. Explain what this sheet is about, what each column/section represents, and how the data is structured and what its purpose might be. If there are formulas, explain their logic in simple terms. Structure your answer with headings, bullet points, and code blocks where appropriate for formulas or data examples to enhance readability."
 UPLOAD_FOLDER = 'uploads'
@@ -33,6 +52,7 @@ ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
 DEFAULT_DOCX_FILENAME = "excel_explanation.docx"
 FORMULA_DOCX_FILENAME = "excel_formula.docx"
 CHAT_DOCX_FILENAME = "excel_chat.docx"
+RECONCILIATION_DOCX_FILENAME = "excel_reconciliation.docx"
 
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -101,6 +121,26 @@ def load_excel_data(file_path):
         logging.error(f"Error loading Excel file: {e}")
         return None
 
+def build_prompt_reconciliation(sheet1, sheet2):
+    """Builds the prompt for Gemini API for reconciliation, comparing two sheets."""
+    prompt_content = "Sheet 1 Data:\n"
+    for row in sheet1.iter_rows(min_row=1, max_row=sheet1.max_row, min_col=1, max_col=sheet1.max_column):
+        row_values = []
+        for cell in row:
+            row_values.append(str(cell.value) if cell.value is not None else "None")
+        prompt_content += "- Row: " + ", ".join(row_values) + "\n"
+
+    prompt_content += "\nSheet 2 Data:\n"
+    for row in sheet2.iter_rows(min_row=1, max_row=sheet2.max_row, min_col=1, max_col=sheet2.max_column):
+        row_values = []
+        for cell in row:
+            row_values.append(str(cell.value) if cell.value is not None else "None")
+        prompt_content += "- Row: " + ", ".join(row_values) + "\n"
+
+    full_prompt = RECONCILIATION_SYSTEM_PROMPT + "\n\nData from Sheet 1 and Sheet 2 to reconcile:\n" + prompt_content
+    logging.info("Reconciliation prompt built successfully.")
+    return full_prompt
+
 
 def build_prompt(sheet):
     """Builds the prompt for the Gemini API based on the Excel sheet data."""
@@ -133,7 +173,7 @@ def get_explanation_from_gemini(prompt, model_name):
     """Gets explanation from Gemini API."""
     model = genai.GenerativeModel(model_name)
     try:
-        response = model.generate_content(prompt, generation_config=genai.types.GenerationConfig(temperature=0.1)) #added temperature
+        response = model.generate_content(prompt, generation_config=genai.types.GenerationConfig(temperature=0.2)) # slight temp increase for reconciliation & formula
         explanation = response.text
         logging.info(f"Explanation received from Gemini API using model: {model_name}")
         return explanation
@@ -215,15 +255,10 @@ def index():
     if request.method == 'POST':
         if 'excel_file' not in request.files:
             error = 'No file part'
-            return render_template('index.html', error=error, model_name=model_name, current_user=current_user)
-
-        file = request.files['excel_file']
-
-        if file.filename == '':
+        elif request.files['excel_file'].filename == '':
             error = 'No selected file'
-            return render_template('index.html', error=error, model_name=model_name, current_user=current_user)
-
-        if file and allowed_file(file.filename):
+        elif 'excel_file' in request.files and allowed_file(request.files['excel_file'].filename): # check file is in request.files
+            file = request.files['excel_file']
             try:
                 filename = secure_filename(file.filename)
                 file_path = os.path.join(UPLOAD_FOLDER, filename)
@@ -252,11 +287,14 @@ def index():
                 error = f"An error occurred: {e}"
             finally:
                 os.remove(file_path)
-
         else:
             error = 'Invalid file type. Allowed types are xlsx, xls'
 
-    return render_template('index.html', explanation_html=explanation_html, error=error, model_name=model_name, current_user=current_user)
+    response = make_response(render_template('index.html', explanation_html=explanation_html, error=error, model_name=model_name, current_user=current_user))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route('/export_docx')
@@ -298,7 +336,12 @@ def formula_creator():
         else:
             error = "Please enter a description for the formula you need."
 
-    return render_template('formula_creator.html', formula_explanation_html=formula_explanation_html, error=error, current_user=current_user)
+    response = make_response(render_template('formula_creator.html', formula_explanation_html=formula_explanation_html, error=error, current_user=current_user))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
 
 @app.route('/export_formula_docx')
 @login_required # Protect formula export
@@ -346,7 +389,11 @@ def chat():
         else:
             error = "Please enter a chat message."
 
-    return render_template('chat.html', explanation_html=explanation_html, chat_history=chat_history, error=error, current_user=current_user)
+    response = make_response(render_template('chat.html', explanation_html=explanation_html, chat_history=chat_history, error=error, current_user=current_user))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/export_chat_docx')
 @login_required # Protect chat export
@@ -371,6 +418,78 @@ def export_chat_docx_route():
         )
     else:
         return "Error exporting chat history to DOCX.", 500
+
+@app.route('/reconcile', methods=['GET', 'POST'])
+@login_required
+def reconcile():
+    """Handles the accounts reconciliation page and logic."""
+    reconciliation_explanation_html = None
+    docx_stream = None
+    error = None
+
+    if request.method == 'POST':
+        if 'excel_file_1' not in request.files or 'excel_file_2' not in request.files:
+            error = 'Need to upload both Sheet 1 and Sheet 2'
+        elif request.files['excel_file_1'].filename == '' or request.files['excel_file_2'].filename == '':
+            error = 'Both Sheet 1 and Sheet 2 files need to be selected'
+        elif 'excel_file_1' in request.files and allowed_file(request.files['excel_file_1'].filename) and 'excel_file_2' in request.files and allowed_file(request.files['excel_file_2'].filename):
+            file1 = request.files['excel_file_1']
+            file2 = request.files['excel_file_2']
+            file_path_1 = os.path.join(UPLOAD_FOLDER, secure_filename(file1.filename))
+            file_path_2 = os.path.join(UPLOAD_FOLDER, secure_filename(file2.filename))
+
+            try:
+                file1.save(file_path_1)
+                file2.save(file_path_2)
+
+                sheet1 = load_excel_data(file_path_1)
+                sheet2 = load_excel_data(file_path_2)
+
+                if sheet1 and sheet2:
+                    prompt = build_prompt_reconciliation(sheet1, sheet2)
+                    reconciliation_markdown = get_explanation_from_gemini(prompt, DEFAULT_MODEL_NAME) # Or thinking model?
+
+                    if reconciliation_markdown:
+                        reconciliation_explanation_html = markdown.markdown(reconciliation_markdown)
+                        session['reconciliation_explanation_markdown'] = reconciliation_markdown
+                    else:
+                        error = "Failed to get reconciliation explanation from Gemini API."
+                else:
+                    error = "Failed to load data from one or both Excel files."
+            except Exception as e:
+                error = f"An error occurred during reconciliation: {e}"
+            finally:
+                if os.path.exists(file_path_1):
+                    os.remove(file_path_1)
+                if os.path.exists(file_path_2):
+                    os.remove(file_path_2)
+        else:
+            error = 'Invalid file types. Allowed types are xlsx, xls for both sheets.'
+
+    response = make_response(render_template('reconcile.html', reconciliation_explanation_html=reconciliation_explanation_html, error=error, current_user=current_user))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+@app.route('/export_reconciliation_docx')
+@login_required
+def export_reconciliation_docx_route():
+    """Exports the reconciliation explanation to DOCX format."""
+    reconciliation_explanation_markdown = session.get('reconciliation_explanation_markdown')
+    if not reconciliation_explanation_markdown:
+        return "No reconciliation explanation available to export.", 400
+
+    docx_stream = export_to_docx(reconciliation_explanation_markdown, RECONCILIATION_DOCX_FILENAME)
+    if docx_stream:
+        return send_file(
+            docx_stream,
+            as_attachment=True,
+            download_name=RECONCILIATION_DOCX_FILENAME,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+    else:
+        return "Error exporting reconciliation explanation to DOCX.", 500
 
 
 if __name__ == '__main__':
