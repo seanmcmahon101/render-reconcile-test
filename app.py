@@ -76,7 +76,9 @@ def build_prompt(sheet):
 
                 comment_text = ""
                 if cell.comment:
-                    comment_text = f" with comment '{cell.comment.text.strip().replace('\n', ' ')}'"
+                    comment_text_raw = cell.comment.text.strip()
+                    comment_text_processed = comment_text_raw.replace('\n', ' ') # Process newline *before* f-string
+                    comment_text = f" with comment '{comment_text_processed}'"
 
                 prompt_content += f"- Cell {cell.coordinate} has {cell_info}{comment_text}.\n"
 
